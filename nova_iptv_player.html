@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080b12" />
+  <title>NOVA TV — IPTV Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root{color-scheme:dark;--accent:#73e0ff;--accent2:#a78bfa;--panel:rgba(12,17,28,.78);--line:rgba(255,255,255,.1)}
+    *{box-sizing:border-box} html,body{height:100%;margin:0;background:#070a11;color:#f4f7fb;font-family:Inter,system-ui,sans-serif}
+    body{overflow:hidden} button,input,select{font:inherit} button{cursor:pointer}
+    button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px;box-shadow:0 0 0 5px #73e0ff24}
+    .glass{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 20px 70px #0006}
+    .app{height:100dvh;min-height:480px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 75% 15%,#162642 0,transparent 40%),#070a11}
+    .video-stage{position:absolute;inset:0;background:linear-gradient(120deg,#111a2a,#080b12 55%,#111827);display:flex;align-items:center;justify-content:center}
+    video{width:100%;height:100%;object-fit:contain;background:#030406}
+    .ambient{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(5,8,14,.92) 0%,rgba(5,8,14,.58) 38%,transparent 72%),linear-gradient(0deg,rgba(5,8,14,.88),transparent 38%,rgba(5,8,14,.32));}
+    .grain{position:absolute;inset:0;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E")}
+    .topbar{position:absolute;top:0;left:0;right:0;padding:22px 30px;display:flex;align-items:center;justify-content:space-between;z-index:5;background:linear-gradient(#070a11b8,transparent)}
+    .brand-mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#6b7bff);display:grid;place-items:center;color:#06101b;box-shadow:0 0 30px #73e0ff35}
+    .eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#8c9bb1;font-weight:800}
+    .pill{border:1px solid #ffffff20;background:#ffffff0c;border-radius:999px;padding:8px 12px;color:#dbe6f7;font-size:11px;display:inline-flex;align-items:center;gap:7px}
+    .dot{width:6px;height:6px;border-radius:50%;background:#5ee6b0;box-shadow:0 0 12px #5ee6b0}
+    .hero{position:absolute;left:clamp(22px,5vw,76px);bottom:clamp(90px,13vh,150px);width:min(600px,70vw);z-index:3;transition:opacity .25s}
+    .channel-logo{width:72px;height:72px;border-radius:20px;background:#ffffff10;border:1px solid #ffffff1c;display:grid;place-items:center;overflow:hidden;flex-shrink:0}
+    .channel-logo img{width:100%;height:100%;object-fit:contain;padding:8px}
+    .channel-title{font-size:clamp(28px,4vw,54px);line-height:1.03;letter-spacing:-.055em;font-weight:800;text-shadow:0 5px 35px #0008}
+    .hero-desc{color:#b4c0d1;font-size:13px;line-height:1.7;max-width:430px}
+    .action-btn{border:1px solid #ffffff20;background:#ffffff12;border-radius:13px;padding:12px 16px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:700;transition:.2s}
+    .action-btn:hover,.action-btn:focus-visible{background:#73e0ff20;border-color:#73e0ff88;transform:translateY(-1px)}
+    .action-primary{background:#eafaff;color:#08111a;border-color:#eafaff}
+    .action-primary:hover{background:#bcefff}
+    .bottom-bar{position:absolute;bottom:0;left:0;right:0;padding:18px 30px 22px;display:flex;align-items:center;justify-content:space-between;z-index:4;background:linear-gradient(transparent,#070a11d9)}
+    .mini-stat{font-size:10px;color:#9aa8bc;display:flex;align-items:center;gap:7px}
+    .side-panel{position:absolute;z-index:8;top:80px;bottom:22px;width:min(390px,90vw);display:flex;flex-direction:column;transition:transform .28s ease,opacity .28s ease}
+    .channel-panel{left:18px}.channel-panel.closed{transform:translateX(calc(-100% - 28px));opacity:0;pointer-events:none}
+    .panel-head{padding:19px 19px 13px}.panel-scroll{overflow:auto;overscroll-behavior:contain;padding:0 10px 12px}
+    .panel-scroll::-webkit-scrollbar{width:5px}.panel-scroll::-webkit-scrollbar-thumb{background:#ffffff25;border-radius:99px}
+    .channel-row{display:flex;align-items:center;gap:12px;padding:11px;border-radius:14px;border:1px solid transparent;transition:.18s;cursor:pointer}
+    .channel-row:hover,.channel-row:focus-visible{background:#ffffff0b;border-color:#ffffff1c;outline:none}
+    .channel-row.active{background:linear-gradient(100deg,#73e0ff20,#a78bfa12);border-color:#73e0ff70;box-shadow:inset 3px 0 var(--accent)}
+    .row-logo{height:42px;width:42px;flex:0 0 42px;border-radius:12px;background:#ffffff0e;border:1px solid #ffffff14;display:grid;place-items:center;overflow:hidden;color:#aab9cb;font-size:11px;font-weight:800}
+    .row-logo img{width:100%;height:100%;object-fit:contain;padding:5px}
+    .row-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row-meta{font-size:10px;color:#8291a6;margin-top:4px}
+    .category-chip{white-space:nowrap;padding:7px 11px;border-radius:999px;font-size:10px;font-weight:700;color:#91a0b5;background:#ffffff08;border:1px solid #ffffff12}
+    .category-chip.active{color:#08121a;background:var(--accent);border-color:var(--accent)}
+    .modal-wrap{position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:#02050bc9;backdrop-filter:blur(14px)}
+    .modal-card{width:min(590px,100%);max-height:min(85dvh,760px);overflow:auto;border-radius:24px;padding:24px}
+    .field{width:100%;background:#070b13;border:1px solid #ffffff1c;border-radius:12px;padding:12px 13px;color:#f4f7fb;font-size:12px}
+    .field:focus{outline:none;border-color:#73e0ff99;box-shadow:0 0 0 3px #73e0ff15}
+    .field-label{font-size:11px;color:#a8b5c8;font-weight:600;display:block;margin-bottom:8px}
+    .setting-section{padding:16px 0;border-bottom:1px solid #ffffff10}.setting-section:last-child{border-bottom:0}
+    input[type=range]{accent-color:var(--accent);width:100%}
+    .epg-card{padding:15px;border:1px solid #ffffff12;border-radius:15px;background:#ffffff06}
+    .toast{position:absolute;z-index:30;top:84px;left:50%;transform:translateX(-50%);padding:11px 16px;border-radius:12px;background:#111b2a;border:1px solid #ffffff1b;font-size:12px;box-shadow:0 10px 35px #0008;animation:toastIn .2s ease}
+    @keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+    .loader{width:36px;height:36px;border:2px solid #ffffff24;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .offline-card{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;width:min(360px,85vw);padding:25px;border-radius:22px}
+    .remote{position:absolute;z-index:10;right:18px;bottom:90px;display:none;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,45px);gap:7px;padding:12px;border-radius:22px;background:#080d18a8;border:1px solid #ffffff20;backdrop-filter:blur(18px)}
+    .remote button{border:1px solid #ffffff16;background:#ffffff0c;border-radius:12px;display:grid;place-items:center;color:#e7f2ff;touch-action:manipulation}
+    .remote button:active{background:#73e0ff40;border-color:var(--accent)}
+    .remote .ok{background:#73e0ff;color:#06111b;font-weight:900;border-radius:50%}
+    .brightness{position:absolute;inset:0;z-index:2;background:#000;pointer-events:none}
+    .empty-state{padding:32px 18px;text-align:center;color:#93a2b6;font-size:12px;line-height:1.7}
+    .focus-ring:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    @media(max-width:700px){
+      .topbar{padding:15px 16px}.brand-sub{display:none}.top-actions .pill{padding:8px}.top-actions .pill span{display:none}
+      .hero{left:20px;bottom:145px;width:calc(100% - 40px)}.channel-logo{width:52px;height:52px;border-radius:15px}.channel-title{font-size:34px}
+      .hero-desc{font-size:11px;max-width:90%}.bottom-bar{padding:15px 17px 18px}.bottom-left .mini-stat:nth-child(n+2){display:none}
+      .side-panel{top:70px;bottom:14px}.channel-panel{left:10px;width:min(360px,calc(100vw - 20px))}
+      .remote{display:grid;right:12px;bottom:68px;grid-template-columns:repeat(3,43px);grid-template-rows:repeat(3,41px);gap:5px;padding:8px}
+      .hero-actions .action-btn{padding:10px 12px}.hero-actions .action-btn span{display:none}
+    }
+    @media(min-width:701px) and (max-height:600px){.hero{bottom:95px}.channel-logo{width:52px;height:52px}.channel-title{font-size:32px}.hero-desc{display:none}.topbar{padding:14px 22px}}
+  </style>
+</head>
+<body>
+<div id="app" class="app">
+  <div class="video-stage">
+    <video id="video" playsinline autoplay controlslist="nodownload noplaybackrate" aria-label="Pemutar TV"></video>
+    <div class="ambient"></div><div class="grain"></div>
+    <div id="brightnessLayer" class="brightness" style="opacity:0"></div>
+    <div id="offline" class="offline-card glass">
+      <div class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-cyan-300/10 border border-cyan-200/20 grid place-items-center text-cyan-200"><i data-lucide="tv" width="25"></i></div>
+      <div class="eyebrow mb-2">NOVA BROADCAST</div>
+      <h2 class="text-xl font-extrabold tracking-tight mb-2">Siap untuk ditonton</h2>
+      <p id="offlineText" class="text-xs text-slate-400 leading-6">Tambahkan URL playlist M3U dari Pengaturan untuk mulai memuat channel.</p>
+      <button id="openSettings" class="action-btn action-primary mt-4"><i data-lucide="settings-2" width="15"></i> Buka Pengaturan</button>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <div class="flex items-center gap-3">
+      <div class="brand-mark"><i data-lucide="radio-tower" width="19"></i></div>
+      <div><div class="font-extrabold tracking-[.16em] text-sm">NOVA<span class="text-cyan-200">TV</span></div><div class="brand-sub eyebrow mt-1">PERSONAL STREAMING HUB</div></div>
+    </div>
+    <div class="top-actions flex items-center gap-2">
+      <div class="pill"><span class="dot"></span><span id="liveStatus">PLAYER READY</span></div>
+      <button id="toggleList" class="pill focus-ring" title="Daftar channel (L)"><i data-lucide="panel-left" width="15"></i><span>Channel</span></button>
+      <button id="epgBtn" class="pill focus-ring" title="EPG (V)"><i data-lucide="calendar-days" width="15"></i><span>EPG</span></button>
+      <button id="settingsBtn" class="pill focus-ring" title="Pengaturan (C)"><i data-lucide="sliders-horizontal" width="15"></i><span>Setting</span></button>
+    </div>
+  </header>
+
+  <section id="hero" class="hero">
+    <div class="flex items-center gap-4 mb-5">
+      <div id="heroLogo" class="channel-logo"><i data-lucide="tv" width="25" class="text-slate-400"></i></div>
+      <div class="min-w-0"><div class="eyebrow mb-2"><span id="channelNumber">CH 000</span> <span class="mx-2 text-slate-600">/</span> <span id="heroCategory">PILIH CHANNEL</span></div><div id="heroName" class="channel-title">Your TV, your way.</div></div>
+    </div>
+    <p id="heroDesc" class="hero-desc mb-6">Satu tempat untuk semua channel favorit Anda. Muat playlist M3U milik Anda melalui pengaturan.</p>
+    <div class="hero-actions flex flex-wrap items-center gap-2">
+      <button id="playBtn" class="action-btn action-primary"><i data-lucide="play" width="16"></i><span id="playLabel">Tonton Channel</span></button>
+      <button id="browseBtn" class="action-btn"><i data-lucide="list-video" width="16"></i><span>Jelajahi Channel</span></button>
+      <button id="retryBtn" class="action-btn" title="Coba lagi"><i data-lucide="rotate-cw" width="15"></i></button>
+    </div>
+  </section>
+
+  <aside id="channelPanel" class="side-panel channel-panel glass rounded-3xl closed">
+    <div class="panel-head">
+      <div class="flex items-center justify-between mb-4"><div><div class="eyebrow mb-1">LIVE DIRECTORY</div><h2 class="text-lg font-extrabold">Channel</h2></div><button id="closeList" class="pill focus-ring" aria-label="Tutup daftar"><i data-lucide="x" width="15"></i></button></div>
+      <div class="relative mb-4"><i data-lucide="search" width="15" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i><input id="searchInput" class="field pl-9" placeholder="Cari channel..." autocomplete="off"></div>
+      <div id="categories" class="flex gap-2 overflow-x-auto pb-2"></div>
+      <div class="flex items-center justify-between mt-3"><span id="channelCount" class="text-[10px] text-slate-500">0 CHANNEL</span><button id="refreshBtn" class="text-[10px] text-cyan-200 flex items-center gap-1"><i data-lucide="refresh-cw" width="12"></i> Refresh playlist</button></div>
+    </div>
+    <div id="channelRows" class="panel-scroll flex-1"><div class="empty-state">Playlist belum dimuat.<br>Tekan <b>C</b> untuk menambahkan URL M3U.</div></div>
+    <div class="px-5 py-3 border-t border-white/10 flex justify-between text-[10px] text-slate-500"><span><i data-lucide="command" width="11" class="inline"></i> Z pilih · X kembali</span><span id="listFooter">NOVA TV</span></div>
+  </aside>
+
+  <div id="epgPanel" class="side-panel glass rounded-3xl right-4 w-[min(380px,92vw)] hidden" style="right:18px;left:auto">
+    <div class="panel-head"><div class="flex items-center justify-between"><div><div class="eyebrow mb-1">PROGRAM GUIDE</div><h2 class="text-lg font-extrabold">Jadwal Acara</h2></div><button id="closeEpg" class="pill"><i data-lucide="x" width="15"></i></button></div><p class="text-[11px] text-slate-400 mt-3 leading-5">EPG memerlukan data jadwal terpisah seperti XMLTV. Jika playlist tidak menyertakan jadwal, bagian ini menampilkan informasi channel.</p></div>
+    <div id="epgContent" class="panel-scroll flex-1 space-y-3"></div>
+  </div>
+
+  <div id="settingsModal" class="modal-wrap hidden">
+    <div class="modal-card glass">
+      <div class="flex items-start justify-between mb-3"><div><div class="eyebrow mb-2">PERSONALIZE YOUR EXPERIENCE</div><h2 class="text-2xl font-extrabold tracking-tight">Pengaturan</h2><p class="text-xs text-slate-400 mt-2">Atur sumber, tampilan, dan pengalaman menonton.</p></div><button id="closeSettings" class="pill"><i data-lucide="x" width="16"></i></button></div>
+      <div class="setting-section">
+        <div class="flex items-center gap-2 mb-3"><i data-lucide="radio" width="16" class="text-cyan-200"></i><h3 class="text-sm font-bold">Sumber Playlist M3U</h3></div>
+        <label class="field-label" for="playlistUrl">URL raw GitHub / URL playlist M3U</label>
+        <input id="playlistUrl" class="field mb-2" type="url" placeholder="https://raw.githubusercontent.com/user/repo/main/playlist.m3u">
+        <p class="text-[10px] text-slate-500 leading-5 mb-3">Gunakan URL file mentah (raw), bukan halaman tampilan GitHub. URL disimpan di perangkat ini saja.</p>
+        <div class="flex gap-2 flex-wrap"><button id="saveLoadBtn" class="action-btn action-primary"><i data-lucide="save" width="14"></i> Simpan & Muat</button><button id="clearPlaylistBtn" class="action-btn"><i data-lucide="trash-2" width="14"></i> Hapus URL</button></div>
+        <p id="settingsMessage" class="text-[11px] mt-3 text-slate-400"></p>
+      </div>
+      <div class="setting-section">
+        <div class="flex items-center justify-between mb-2"><label class="field-label !mb-0" for="volumeSlider">Volume</label><span id="volumeValue" class="text-xs text-cyan-200">80%</span></div>
+        <div class="flex items-center gap-3"><button id="muteBtn" class="pill" title="Mute"><i data-lucide="volume-2" width="15"></i></button><input id="volumeSlider" type="range" min="0" max="100" value="80"></div>
+      </div>
+      <div class="setting-section">
+        <div class="flex items-center justify-between mb-2"><label class="field-label !mb-0" for="brightnessSlider">Dimmer layar</label><span id="brightnessValue" class="text-xs text-cyan-200">0%</span></div>
+        <input id="brightnessSlider" type="range" min="0" max="75" value="0"><p class="text-[10px] text-slate-500 mt-2">Menambahkan lapisan gelap di atas video, tanpa mengubah kecerahan perangkat.</p>
+      </div>
+      <div class="setting-section">
+        <label class="field-label" for="layoutMode">Mode perangkat</label><select id="layoutMode" class="field"><option value="auto">Otomatis / Responsive</option><option value="tv">Mode TV / 16:9 Box</option><option value="mobile">Mode Mobile</option></select>
+      </div>
+      <div class="pt-4 flex justify-between items-center gap-3"><span class="text-[10px] text-slate-500">NOVA TV · Single-file player</span><button id="doneSettings" class="action-btn action-primary">Selesai</button></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <div id="remote" class="remote" aria-label="Remote virtual">
+    <button data-action="up" style="grid-column:2;grid-row:1" aria-label="Channel atas"><i data-lucide="chevron-up"></i></button>
+    <button data-action="left" style="grid-column:1;grid-row:2" aria-label="Kiri"><i data-lucide="chevron-left"></i></button>
+    <button data-action="ok" class="ok" style="grid-column:2;grid-row:2" aria-label="OK">OK</button>
+    <button data-action="right" style="grid-column:3;grid-row:2" aria-label="Kanan"><i data-lucide="chevron-right"></i></button>
+    <button data-action="down" style="grid-column:2;grid-row:3" aria-label="Channel bawah"><i data-lucide="chevron-down"></i></button>
+    <button data-action="back" style="grid-column:1;grid-row:3" aria-label="Kembali"><i data-lucide="corner-down-left" width="16"></i></button>
+    <button data-action="settings" style="grid-column:3;grid-row:1" aria-label="Pengaturan"><i data-lucide="settings" width="16"></i></button>
+    <button data-action="epg" style="grid-column:3;grid-row:3" aria-label="EPG"><i data-lucide="calendar-days" width="16"></i></button>
+  </div>
+  <div class="bottom-bar">
+    <div class="bottom-left flex items-center gap-5"><div class="mini-stat"><i data-lucide="clock" width="13"></i><span id="clock">--:--:--</span></div><div class="mini-stat"><i data-lucide="monitor" width="13"></i><span id="resolution">PLAYER READY</span></div><div class="mini-stat"><i data-lucide="activity" width="13"></i><span id="streamState">STANDBY</span></div></div>
+    <div class="flex items-center gap-3"><span class="mini-stat"><i data-lucide="arrow-up-down" width="13"></i> CH</span><span class="mini-stat"><i data-lucide="volume-2" width="13"></i> VOL</span><span class="mini-stat hidden sm:flex">Z SELECT · X BACK · C SETTINGS · V EPG</span></div>
+  </div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const video = $('video');
+  const STORE_URL = 'nova_m3u_url', STORE_VOL = 'nova_volume', STORE_BRIGHT = 'nova_brightness', STORE_LAYOUT = 'nova_layout';
+  let channels = [], filtered = [], currentIndex = -1, selectedIndex = -1, activeCategory = 'Semua', hls = null, toastTimer = null, loadToken = 0, isMuted = false;
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0, controlsTimer = null;
+  const fallbackCategories = ['Berita','Olahraga','Hiburan','Film','Lokal','Musik','Anak','Dokumenter','Lainnya'];
+  function safeText(s){return String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function iconRefresh(){ if(window.lucide) lucide.createIcons(); }
+  function toast(msg){ $('toast').textContent=msg; $('toast').classList.remove('hidden'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),2600); }
+  function setStatus(msg,state='ready'){ $('liveStatus').textContent=msg; $('streamState').textContent=msg; const dot=document.querySelector('.dot'); dot.style.background=state==='error'?'#fb7185':state==='loading'?'#fbbf24':'#5ee6b0'; dot.style.boxShadow=`0 0 12px ${state==='error'?'#fb7185':state==='loading'?'#fbbf24':'#5ee6b0'}`; }
+  function normalizeCategory(name){
+    let s=(name||'Lainnya').trim(); if(!s)return 'Lainnya';
+    const n=s.toLowerCase();
+    if(/news|berita|current affairs/.test(n))return 'Berita';
+    if(/sport|olahraga|football|soccer/.test(n))return 'Olahraga';
+    if(/movie|film|cinema|drama/.test(n))return 'Film';
+    if(/entertain|variety|general|hiburan|lifestyle/.test(n))return 'Hiburan';
+    if(/music|musik|radio/.test(n))return 'Musik';
+    if(/kids|children|anak|cartoon/.test(n))return 'Anak';
+    if(/local|regional|lokal|indonesia/.test(n))return 'Lokal';
+    if(/documentary|documenter|dokumenter/.test(n))return 'Dokumenter';
+    return s;
+  }
+  function parseM3U(text){
+    const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/); const result=[]; let meta=null;
+    for(const raw of lines){
+      const line=raw.trim(); if(!line)continue;
+      if(line.startsWith('#EXTINF')){
+        const comma=line.indexOf(','); const attrs=comma>=0?line.slice(0,comma):line; const name=comma>=0?line.slice(comma+1).trim():'Channel';
+        const get=(key)=>{const re=new RegExp('(?:^|\\\\s)'+key+'\\s*=\\s*(?:"([^"]*)"|\\'([^\\']*)\\'|([^,\\s]+))','i');const m=attrs.match(re);return m?(m[1]??m[2]??m[3]??''):''};
+        const title=name || get('tvg-name') || 'Channel';
+        meta={name:title,logo:get('tvg-logo'),group:get('group-title')||get('tvg-group')||'Lainnya',tvgId:get('tvg-id'),duration:(attrs.match(/^#EXTINF:\s*(-?\d+(?:\.\d+)?)/)||[])[1]||'-1'};
+      } else if(line.startsWith('#EXTGRP:')){if(meta)meta.group=line.slice(8).trim()||meta.group;}
+      else if(line.startsWith('#')) continue;
+      else if(/^https?:\/\//i.test(line)){
+        const m=meta||{name:line,logo:'',group:'Lainnya',tvgId:'',duration:'-1'};
+        result.push({...m,url:line,category:normalizeCategory(m.group)});meta=null;
+      }
+    }
+    return result;
+  }
+  function logoMarkup(ch,cls='row-logo'){
+    if(ch.logo) return `<div class="${cls}"><img loading="lazy" referrerpolicy="no-referrer" src="${safeText(ch.logo)}" alt="" onerror="this.style.display='none';this.parentElement.textContent='TV'"></div>`;
+    const initials=(ch.name||'TV').trim().split(/\s+/).slice(0,2).map(s=>s[0]||'').join('').toUpperCase();
+    return `<div class="${cls}">${safeText(initials||'TV')}</div>`;
+  }
+  function categoriesList(){
+    const cats=['Semua',...new Set(channels.map(c=>c.category||'Lainnya'))];
+    $('categories').innerHTML=cats.map(c=>`<button class="category-chip ${c===activeCategory?'active':''}" data-category="${safeText(c)}">${safeText(c)}</button>`).join('');
+    $('categories').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{activeCategory=b.dataset.category;renderChannels();}));
+  }
+  function renderChannels(){
+    const query=$('searchInput').value.trim().toLowerCase();
+    filtered=channels.map((c,i)=>({...c,_index:i})).filter(c=>(activeCategory==='Semua'||c.category===activeCategory)&&(!query||`${c.name} ${c.group} ${c.tvgId}`.toLowerCase().includes(query)));
+    $('channelCount').textContent=`${filtered.length} CHANNEL`;
+    $('channelRows').innerHTML=filtered.length?filtered.map((c,i)=>`<div class="channel-row ${c._index===currentIndex?'active':''}" role="button" tabindex="0" data-index="${c._index}" aria-label="Putar ${safeText(c.name)}">${logoMarkup(c)}<div class="min-w-0 flex-1"><div class="row-name">${safeText(c.name)}</div><div class="row-meta">${safeText(c.category)}${c._index===currentIndex?' · NOW PLAYING':''}</div></div><div class="text-[10px] text-slate-600 font-bold">${String(c._index+1).padStart(2,'0')}</div></div>`).join(''):'<div class="empty-state">Tidak ada channel yang cocok.<br>Coba kategori atau kata kunci lain.</div>';
+    $('channelRows').querySelectorAll('.channel-row').forEach(el=>{const activate=()=>{selectedIndex=Number(el.dataset.index);playChannel(selectedIndex);};el.addEventListener('click',activate);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();activate();}})});
+    $('listFooter').textContent=channels.length?`${channels.length} TOTAL`:'NOVA TV'; categoriesList(); iconRefresh();
+  }
+  function updateHero(){
+    const ch=channels[currentIndex];
+    if(!ch){$('channelNumber').textContent='CH 000';$('heroCategory').textContent='PILIH CHANNEL';$('heroName').textContent='Your TV, your way.';$('heroDesc').textContent='Satu tempat untuk semua channel favorit Anda. Muat playlist M3U milik Anda melalui pengaturan.';$('heroLogo').innerHTML='<i data-lucide="tv" width="25" class="text-slate-400"></i>'; $('playLabel').textContent='Tonton Channel';}
+    else{$('channelNumber').textContent=`CH ${String(currentIndex+1).padStart(3,'0')}`;$('heroCategory').textContent=(ch.category||'Lainnya').toUpperCase();$('heroName').textContent=ch.name;$('heroDesc').textContent=`${ch.group||ch.category||'Channel'} · ${ch.tvgId?'ID '+ch.tvgId:'Live stream'} · Tekan Z untuk memutar ulang.`;$('heroLogo').innerHTML=ch.logo?`<img src="${safeText(ch.logo)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:'<i data-lucide="tv" width="25" class="text-slate-300"></i>';$('playLabel').textContent='Putar Channel';}
+    iconRefresh();
+  }
+  function showOffline(message){$('offlineText').textContent=message;$('offline').classList.remove('hidden');$('resolution').textContent='NO SIGNAL';}
+  function hideOffline(){$('offline').classList.add('hidden');}
+  function destroyHls(){if(hls){try{hls.destroy()}catch(e){}hls=null;}}
+  async function playChannel(index){
+    if(!channels.length){openSettings();toast('Tambahkan URL playlist M3U terlebih dahulu.');return;}
+    index=(index+channels.length)%channels.length;currentIndex=index;selectedIndex=index;const ch=channels[index];updateHero();renderChannels();destroyHls();
+    try{video.pause();video.removeAttribute('src');video.load();}catch(e){}
+    hideOffline();setStatus('CONNECTING','loading');$('resolution').textContent='BUFFERING';$('offlineText').textContent='Menghubungkan ke stream…';
+    const url=ch.url; const isHls=/\.m3u8(?:$|[?#])/i.test(url)||/m3u8/i.test(url);
+    video.volume=Number($('volumeSlider').value)/100;video.muted=isMuted;
+    let token=++loadToken;
+    const fail=(msg)=>{if(token!==loadToken)return;showOffline(msg||'Stream Offline — Tekan Z untuk coba lagi.');setStatus('STREAM OFFLINE','error');$('resolution').textContent='NO SIGNAL';};
+    video.onerror=()=>fail('Stream Offline — Tekan Z untuk coba lagi. Pastikan URL aktif dan server mengizinkan akses dari browser.');
+    if(isHls && window.Hls && Hls.isSupported()){
+      hls=new Hls({enableWorker:true,lowLatencyMode:true,backBufferLength:30,manifestLoadingTimeOut:15000,levelLoadingTimeOut:15000});
+      hls.on(Hls.Events.MEDIA_ATTACHED,()=>{if(token===loadToken)hls.loadSource(url)});
+      hls.on(Hls.Events.MANIFEST_PARSED,async()=>{if(token!==loadToken)return;try{await video.play();setStatus('LIVE','ready');hideOffline();}catch(e){setStatus('READY TO PLAY');toast('Tekan Z atau tombol Putar untuk memulai video.');}});
+      hls.on(Hls.Events.ERROR,(_,data)=>{if(data.fatal){if(data.type===Hls.ErrorTypes.NETWORK_ERROR){setStatus('RETRYING','loading');hls.startLoad();setTimeout(()=>{if(token===loadToken&&video.readyState===0)fail('Stream tidak merespons. Tekan Z untuk mencoba lagi.');},12000);}else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){hls.recoverMediaError();}else{fail('Stream Offline — Tekan Z untuk coba lagi.');}}});
+      hls.attachMedia(video);
+    } else {
+      video.src=url;video.load();
+      try{await video.play();setStatus('LIVE','ready');hideOffline();}catch(e){if(e.name==='NotAllowedError'){setStatus('READY TO PLAY');showOffline('Browser menunggu interaksi. Tekan Z atau tombol Putar untuk memulai stream.');}else fail('Stream tidak dapat diputar. Cek URL, format, CORS, atau ketersediaan stream.');}
+    }
+    showControlsBriefly();
+  }
+  async function loadPlaylist(url,save=true){
+    if(!url){toast('Masukkan URL playlist terlebih dahulu.');return;}
+    const token=++loadToken; $('settingsMessage').textContent='Mengambil playlist…';setStatus('LOADING PLAYLIST','loading');
+    try{
+      const response=await fetch(url,{cache:'no-store'});
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const body=await response.text(); if(token!==loadToken)return;
+      const parsed=parseM3U(body);if(!parsed.length)throw new Error('Tidak ditemukan entri channel. Pastikan file berformat M3U dan berisi URL stream.');
+      channels=parsed;activeCategory='Semua';currentIndex=-1;selectedIndex=0;renderChannels();updateHero();$('settingsMessage').textContent=`Berhasil memuat ${channels.length} channel.`;setStatus('PLAYLIST READY','ready');showOffline('Playlist berhasil dimuat. Pilih channel dari daftar, lalu tekan Z untuk menonton.');
+      $('channelPanel').classList.remove('closed');if(save)localStorage.setItem(STORE_URL,url);toast(`${channels.length} channel berhasil dimuat.`);iconRefresh();
+    }catch(err){if(token!==loadToken)return;$('settingsMessage').textContent=`Gagal memuat: ${err.message}`;setStatus('LOAD ERROR','error');toast('Playlist gagal dimuat. Periksa URL dan koneksi.');}
+  }
+  function openSettings(){ $('playlistUrl').value=localStorage.getItem(STORE_URL)||''; $('settingsModal').classList.remove('hidden');setTimeout(()=>$('playlistUrl').focus(),80); }
+  function closeSettings(){ $('settingsModal').classList.add('hidden'); }
+  function toggleList(force){const p=$('channelPanel');const open=force===undefined?p.classList.contains('closed'):force;p.classList.toggle('closed',!open);if(open){$('searchInput').focus({preventScroll:true});}}
+  function toggleEpg(force){const p=$('epgPanel');const open=force===undefined?p.classList.contains('hidden'):force;p.classList.toggle('hidden',!open);if(open)renderEpg();}
+  function renderEpg(){
+    const ch=channels[currentIndex];const now=new Date();const fmt=t=>t.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    $('epgContent').innerHTML=`<div class="epg-card"><div class="eyebrow mb-3">SEKARANG · ${fmt(now)}</div><div class="flex items-center gap-3">${ch?logoMarkup(ch,'row-logo'):'<div class="row-logo"><i data-lucide="tv"></i></div>'}<div class="min-w-0"><div class="font-bold text-sm">${safeText(ch?ch.name:'Belum ada channel dipilih')}</div><div class="text-[10px] text-slate-400 mt-1">${safeText(ch?ch.category:'Pilih channel untuk melihat detail')}</div></div></div><p class="text-xs text-slate-400 leading-6 mt-4">${ch?'Informasi jadwal belum tersedia di playlist. Untuk EPG lengkap, tambahkan sumber XMLTV dan lakukan pencocokan berdasarkan tvg-id.':'Muat playlist M3U, lalu pilih channel.'}</p></div><div class="epg-card"><div class="eyebrow mb-2">BERIKUTNYA</div><div class="text-sm font-bold">Jadwal tidak tersedia</div><p class="text-xs text-slate-400 mt-2 leading-6">M3U umumnya berisi daftar stream, bukan jadwal acara. Ini bukan error player.</p></div><div class="epg-card"><div class="eyebrow mb-2">TIPS</div><p class="text-xs text-slate-400 leading-6">Gunakan playlist yang menyediakan atribut <code class="text-cyan-200">tvg-id</code> dan data XMLTV terpisah untuk EPG otomatis.</p></div>`;
+    iconRefresh();
+  }
+  function changeChannel(delta){if(!channels.length){toast('Belum ada channel. Buka pengaturan dengan C.');return;}playChannel((currentIndex<0?0:currentIndex+delta+channels.length)%channels.length);}
+  function changeCategory(delta){const cats=['Semua',...new Set(channels.map(c=>c.category||'Lainnya'))];if(!cats.length)return;let i=cats.indexOf(activeCategory);activeCategory=cats[(i+delta+cats.length)%cats.length];renderChannels();toast(`Kategori: ${activeCategory}`);}
+  function remoteAction(action){switch(action){case'up':changeChannel(-1);break;case'down':changeChannel(1);break;case'left':if($('settingsModal').classList.contains('hidden')){changeCategory(-1)}else{video.volume=Math.max(0,video.volume-.05);syncVolume()}break;case'right':if($('settingsModal').classList.contains('hidden')){changeCategory(1)}else{video.volume=Math.min(1,video.volume+.05);syncVolume()}break;case'ok':if(currentIndex<0)playChannel(selectedIndex>=0?selectedIndex:0);else if(video.paused){video.play().then(()=>{hideOffline();setStatus('LIVE')}).catch(()=>playChannel(currentIndex));}else{video.pause();setStatus('PAUSED');}break;case'back':if(!$('settingsModal').classList.contains('hidden'))closeSettings();else if(!$('epgPanel').classList.contains('hidden'))toggleEpg(false);else if(!$('channelPanel').classList.contains('closed'))toggleList(false);else showControlsBriefly();break;case'settings':$('settingsModal').classList.contains('hidden')?openSettings():closeSettings();break;case'epg':toggleEpg();break;}}
+  function syncVolume(){const val=Math.round(video.volume*100);$('volumeSlider').value=val;$('volumeValue').textContent=val+'%';isMuted=video.muted;$('muteBtn').innerHTML=`<i data-lucide="${isMuted?'volume-x':video.volume<.5?'volume-1':'volume-2'}" width="15"></i>`;iconRefresh();localStorage.setItem(STORE_VOL,String(val));}
+  function showControlsBriefly(){document.querySelector('.topbar').style.opacity='1';$('hero').style.opacity='1';document.querySelector('.bottom-bar').style.opacity='1';clearTimeout(controlsTimer);if(window.innerWidth>700)controlsTimer=setTimeout(()=>{if($('settingsModal').classList.contains('hidden')&&$('channelPanel').classList.contains('closed')&&$('epgPanel').classList.contains('hidden')){document.querySelector('.topbar').style.opacity='.65';document.querySelector('.bottom-bar').style.opacity='.65';}},5000);}
+  $('saveLoadBtn').addEventListener('click',()=>loadPlaylist($('playlistUrl').value.trim(),true));
+  $('clearPlaylistBtn').addEventListener('click',()=>{localStorage.removeItem(STORE_URL);$('playlistUrl').value='';$('settingsMessage').textContent='URL playlist dihapus dari penyimpanan lokal.';toast('URL playlist dihapus.');});
+  $('openSettings').addEventListener('click',openSettings);$('settingsBtn').addEventListener('click',openSettings);$('closeSettings').addEventListener('click',closeSettings);$('doneSettings').addEventListener('click',closeSettings);
+  $('toggleList').addEventListener('click',()=>toggleList());$('browseBtn').addEventListener('click',()=>toggleList(true));$('closeList').addEventListener('click',()=>toggleList(false));
+  $('epgBtn').addEventListener('click',()=>toggleEpg());$('closeEpg').addEventListener('click',()=>toggleEpg(false));
+  $('playBtn').addEventListener('click',()=>currentIndex<0?playChannel(selectedIndex>=0?selectedIndex:0):playChannel(currentIndex));
+  $('retryBtn').addEventListener('click',()=>currentIndex>=0?playChannel(currentIndex):openSettings());
+  $('refreshBtn').addEventListener('click',()=>{const url=localStorage.getItem(STORE_URL)||$('playlistUrl').value.trim();if(url)loadPlaylist(url,false);else openSettings();});
+  $('searchInput').addEventListener('input',renderChannels);
+  $('volumeSlider').addEventListener('input',()=>{video.volume=Number($('volumeSlider').value)/100;isMuted=false;video.muted=false;syncVolume();});
+  $('muteBtn').addEventListener('click',()=>{isMuted=!isMuted;video.muted=isMuted;syncVolume();});
+  $('brightnessSlider').addEventListener('input',()=>{const v=Number($('brightnessSlider').value);$('brightnessLayer').style.opacity=v/100;$('brightnessValue').textContent=v+'%';localStorage.setItem(STORE_BRIGHT,String(v));});
+  $('layoutMode').addEventListener('change',()=>{const mode=$('layoutMode').value;localStorage.setItem(STORE_LAYOUT,mode);document.body.dataset.layout=mode;toast('Mode tampilan diperbarui.');});
+  document.querySelectorAll('#remote button').forEach(b=>b.addEventListener('click',()=>remoteAction(b.dataset.action)));
+  document.addEventListener('keydown',e=>{
+    const tag=(document.activeElement?.tagName||'').toLowerCase(),typing=['input','textarea','select'].includes(tag);
+    if(e.key==='Escape'||e.key.toLowerCase()==='x'){e.preventDefault();remoteAction('back');return;}
+    if(typing){if(e.key==='Enter'&&document.activeElement===$('playlistUrl'))$('saveLoadBtn').click();return;}
+    if(e.key==='ArrowUp'){e.preventDefault();changeChannel(-1);}
+    else if(e.key==='ArrowDown'){e.preventDefault();changeChannel(1);}
+    else if(e.key==='ArrowLeft'){e.preventDefault();if(!$('channelPanel').classList.contains('closed'))changeCategory(-1);else{video.volume=Math.max(0,video.volume-.05);syncVolume();}}
+    else if(e.key==='ArrowRight'){e.preventDefault();if(!$('channelPanel').classList.contains('closed'))changeCategory(1);else{video.volume=Math.min(1,video.volume+.05);syncVolume();}}
+    else if(e.key.toLowerCase()==='z'||e.key==='Enter'){e.preventDefault();remoteAction('ok');}
+    else if(e.key.toLowerCase()==='c'){e.preventDefault();remoteAction('settings');}
+    else if(e.key.toLowerCase()==='v'){e.preventDefault();remoteAction('epg');}
+    else if(e.key.toLowerCase()==='l'){e.preventDefault();toggleList();}
+    else if(e.key===' '){e.preventDefault();remoteAction('ok');}
+    showControlsBriefly();
+  });
+  $('settingsModal').addEventListener('click',e=>{if(e.target===$('settingsModal'))closeSettings();});
+  const stage=$('.video-stage');
+  stage.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;touchStartTime=Date.now();},{passive:true});
+  stage.addEventListener('touchend',e=>{if(!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-touchStartX,dy=e.changedTouches[0].clientY-touchStartY;if(Math.abs(dy)>55&&Math.abs(dy)>Math.abs(dx)*1.15){changeChannel(dy<0?1:-1);}else if(Math.abs(dx)>85&&Math.abs(dx)>Math.abs(dy)){video.volume=Math.max(0,Math.min(1,video.volume+(dx>0?.08:-.08)));syncVolume();}else if(Date.now()-touchStartTime<280){showControlsBriefly();}},{passive:true});
+  video.addEventListener('playing',()=>{hideOffline();setStatus('LIVE','ready');if(video.videoWidth&&video.videoHeight)$('resolution').textContent=`${video.videoWidth} × ${video.videoHeight}`;});
+  video.addEventListener('waiting',()=>{setStatus('BUFFERING','loading');$('resolution').textContent='BUFFERING';});
+  video.addEventListener('pause',()=>{if(currentIndex>=0&&video.currentTime>0)setStatus('PAUSED');});
+  video.addEventListener('loadedmetadata',()=>{if(video.videoWidth&&video.videoHeight)$('resolution').textContent=`${video.videoWidth} × ${video.videoHeight}`;});
+  setInterval(()=>$('clock').textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),1000);
+  const savedVol=Number(localStorage.getItem(STORE_VOL));if(Number.isFinite(savedVol)&&savedVol>=0&&savedVol<=100)$('volumeSlider').value=savedVol;video.volume=Number($('volumeSlider').value)/100;$('volumeValue').textContent=$('volumeSlider').value+'%';
+  const savedBright=Number(localStorage.getItem(STORE_BRIGHT));if(Number.isFinite(savedBright)&&savedBright>=0){$('brightnessSlider').value=savedBright;$('brightnessLayer').style.opacity=savedBright/100;$('brightnessValue').textContent=savedBright+'%';}
+  $('layoutMode').value=localStorage.getItem(STORE_LAYOUT)||'auto';
+  iconRefresh();syncVolume();updateHero();
+  const savedUrl=localStorage.getItem(STORE_URL);if(savedUrl){$('playlistUrl').value=savedUrl;loadPlaylist(savedUrl,false).catch(()=>{});}
+})();
+</script>
+</body>
+</html>
